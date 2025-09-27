@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Github Updater</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">Version %1$s is available. You are currently using %2$s.</string>
+    <string name="update_release_notes_heading">Release notes</string>
+    <string name="update_now">Update</string>
+    <string name="update_later">Later</string>
+    <string name="update_downloading_title">Downloading update…</string>
+    <string name="update_error_title">Update failed</string>
+    <string name="update_error_message">Unable to download the latest version. %1$s</string>
+    <string name="update_error_generic">Please try again later.</string>
+    <string name="update_install_title">Install update</string>
+    <string name="update_install_started">Download complete. The installer should launch shortly.</string>
+    <string name="update_permission_title">Allow update installation</string>
+    <string name="update_permission_message">To install updates from GitHub releases, allow this app to install unknown apps in system settings.</string>
+    <string name="update_permission_open_settings">Open settings</string>
+    <string name="update_retry">Retry</string>
+    <string name="update_view_release">View on GitHub</string>
+    <string name="update_view_release_failed">Unable to open the release page. Please try again later.</string>
+</resources>
