@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.vanniktech.mavenPublish)
+    id("maven-publish")
 }
 
 group = "io.github.kotlin"
@@ -53,17 +54,4 @@ android {
     }
 }
 
-mavenPublishing {
-    publishToMavenCentral()
 
-    signAllPublications()
-
-    coordinates(group.toString(), "library", version.toString())
-
-    pom {
-        name = "My library"
-        description = "A library."
-        inceptionYear = "2024"
-        url = "https://maven.pkg.github.com/No3x/compose-github-release-updater"
-    }
-}
