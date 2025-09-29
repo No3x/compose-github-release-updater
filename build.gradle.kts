@@ -7,12 +7,3 @@ plugins {
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
 }
-
-group = "com.github.No3x"
-version = "1.0.0"
-
-if (tasks.findByName("publishToMavenLocal") == null) {
-    tasks.register("publishToMavenLocal") {
-        dependsOn(":library:publishToMavenLocal")
-    }
-}
