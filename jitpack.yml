@@ -1,9 +1,4 @@
 jdk:
   - openjdk17
-before_install:
-  - ls -al
-  - ls -al gradle/wrapper || true
-  - test -f gradle/wrapper/gradle-wrapper.jar || { echo "Missing wrapper jar"; exit 1; }
-  - chmod +x gradlew
 install:
   - ./gradlew library:publishToMavenLocal
