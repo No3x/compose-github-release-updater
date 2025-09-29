@@ -263,7 +263,32 @@ fun interface VersionComparator {
 }
 
 fun VersionComparator.Companion.semver(): VersionComparator =
-    VersionComparator { current, candidate -> Version.parse(candidate) > Version.parse(current) }
+    VersionComparator { current, candidate ->
+        Version.parse(candidate.normalizeSemver()) > Version.parse(current.normalizeSemver())
+    }
+
+private fun String.normalizeSemver(): String {
+    val trimmed = trim()
+    if (trimmed.isEmpty()) return trimmed
+
+    val metadataIndex = trimmed.indexOf('+')
+    val metadata = if (metadataIndex >= 0) trimmed.substring(metadataIndex) else ""
+    val withoutMetadata = if (metadataIndex >= 0) trimmed.substring(0, metadataIndex) else trimmed
+
+    val prereleaseIndex = withoutMetadata.indexOf('-')
+    val prerelease = if (prereleaseIndex >= 0) withoutMetadata.substring(prereleaseIndex) else ""
+    val core = if (prereleaseIndex >= 0) withoutMetadata.substring(0, prereleaseIndex) else withoutMetadata
+
+    val parts = core.split('.')
+    val normalizedCore = when {
+        parts.any { it.isEmpty() } -> core
+        parts.size == 1 -> "${parts[0]}.0.0"
+        parts.size == 2 -> "${parts[0]}.${parts[1]}.0"
+        else -> core
+    }
+
+    return normalizedCore + prerelease + metadata
+}
 
 class AssetFilter private constructor(
     private val matcher: (contentType: String?, name: String) -> Boolean

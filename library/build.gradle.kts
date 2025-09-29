@@ -61,6 +61,7 @@ mavenPublishing {
     coordinates(group.toString(), "compose-github-release-updater", version.toString())
     pom {
         name = "compose-github-release-updater"
+        url = "https://github.com/No3x/compose-github-release-updater"
     }
 }
 
