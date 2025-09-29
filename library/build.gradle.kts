@@ -58,12 +58,9 @@ android {
 }
 
 mavenPublishing {
-    coordinates(group.toString(), "library", version.toString())
+    coordinates(group.toString(), "compose-github-release-updater", version.toString())
     pom {
-        name = "My library"
-        description = "A library."
-        inceptionYear = "2024"
-        url = "https://maven.pkg.github.com/No3x/compose-github-release-updater"
+        name = "compose-github-release-updater"
     }
 }
 
