@@ -5,10 +5,9 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.vanniktech.mavenPublish)
-    id("maven-publish")
 }
 
-group = "io.github.kotlin"
+group = "com.github.No3x"
 version = "1.0.0"
 
 kotlin {
@@ -30,7 +29,6 @@ kotlin {
         sourceSets {
             val commonMain by getting {
                 dependencies {
-                    //put your multiplatform dependencies here
                 }
             }
             val commonTest by getting {
@@ -43,7 +41,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.jetbrains.kotlinx.multiplatform.library.template"
+    namespace = "de.no3x.compose.githubreleaseupdater.library"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -52,6 +50,19 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    publishing {
+        singleVariant("release") { withSourcesJar() }
+        singleVariant("debug") { withSourcesJar() }
+    }
 }
 
+mavenPublishing {
+    coordinates(group.toString(), "library", version.toString())
+    pom {
+        name = "My library"
+        description = "A library."
+        inceptionYear = "2024"
+        url = "https://maven.pkg.github.com/No3x/compose-github-release-updater"
+    }
+}
 
