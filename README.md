@@ -30,8 +30,12 @@ dependencyResolutionManagement {
 
 ```kotlin
 // module build.gradle.kts
-dependencies {
-   implementation("com.github.No3x.compose-github-release-updater:compose-github-release-updater:1.0.0")
+kotlin {
+   sourceSets {
+      androidMain.dependencies {
+         implementation("com.github.No3x.compose-github-release-updater:compose-github-release-updater:1.0.0")
+      }
+   }
 }
 ```
 
