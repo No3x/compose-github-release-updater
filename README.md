@@ -20,17 +20,18 @@ The project is wired for JitPack and Maven publishing. After the first tagged re
 ```kotlin
 // settings.gradle.kts
 dependencyResolutionManagement {
-    repositories {
-        mavenCentral()
-        maven(url = "https://jitpack.io")
-    }
+   repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+   repositories {
+      mavenCentral()
+      maven { url = uri("https://jitpack.io") }
+   }
 }
 ```
 
 ```kotlin
 // module build.gradle.kts
 dependencies {
-    implementation("com.github.No3x:compose-github-release-updater:1.0.0")
+   implementation("com.github.No3x.compose-github-release-updater:compose-github-release-updater:1.0.0")
 }
 ```
 
@@ -43,7 +44,7 @@ If you publish a different version (for example a Git SHA on JitPack), update th
    <uses-permission android:name="android.permission.INTERNET" />
    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-   <application ...>
+   <application>
        <provider
            android:name="androidx.core.content.FileProvider"
            android:authorities="${applicationId}.fileprovider"
@@ -67,7 +68,8 @@ If you publish a different version (for example a Git SHA on JitPack), update th
                context = context,
                owner = BuildConfig.GITHUB_REPO_OWNER,
                repo = BuildConfig.GITHUB_REPO_NAME,
-               token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() }
+               token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() },
+               enabled = !BuildConfig.DEBUG
            )
        }
 
@@ -76,7 +78,7 @@ If you publish a different version (for example a Git SHA on JitPack), update th
        var error by remember { mutableStateOf<Throwable?>(null) }
 
        LaunchedEffect(updater) {
-           pendingRelease = updater.checkForUpdate(force = false)
+           pendingRelease = updater.checkForUpdate()
        }
 
        pendingRelease?.let { release ->
@@ -140,11 +142,14 @@ If you publish a different version (for example a Git SHA on JitPack), update th
        }
    }
    ```
+   Use the `enabled` flag to skip update prompts in debug builds (as shown above).
+   `checkForUpdate()` respects the throttling interval by default, so reserve `force = true` for an explicit "Check for updates" action.
    The helper exposes a small `Result` based API so you can surface errors or ask the user to grant "install unknown apps" permission when needed.
 
 A fuller Compose implementation is available in `sample/src/androidMain/`.
 
 ## Customisation
+- **Build variants** - Pass `enabled = !BuildConfig.DEBUG` (or similar) to silence update checks during local development.
 - **Asset selection** - Combine `AssetFilter` helpers to target a specific suffix or MIME type.
 - **Version comparison** - Supply your own `VersionComparator` if you publish non-SemVer tags.
 - **Network throttling** - Adjust `checkInterval` to control how often the GitHub API is queried.

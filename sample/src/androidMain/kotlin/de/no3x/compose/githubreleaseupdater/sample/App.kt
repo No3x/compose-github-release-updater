@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import de.no3x.compose.githubupdater.GithubAutoUpdater
 import de.no3x.compose.githubupdater.GithubRelease
-import de.no3x.compose.githubupdater.VersionComparator
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -35,12 +34,14 @@ import kotlin.math.roundToInt
 fun App() {
     val context = LocalContext.current
     val updateScope = rememberCoroutineScope()
+    var isEnabled by remember { mutableStateOf(!BuildConfig.DEBUG) }
     val updater = remember(context.applicationContext) {
         GithubAutoUpdater(
             context = context.applicationContext,
             owner = BuildConfig.GITHUB_REPO_OWNER,
             repo = BuildConfig.GITHUB_REPO_NAME,
-            token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() }
+            token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() },
+            enabled = isEnabled
         )
     }
     var updateState by remember { mutableStateOf<UpdateUiState>(UpdateUiState.None) }
@@ -96,7 +97,13 @@ fun App() {
     when (val state = updateState) {
         is UpdateUiState.NotAvailable -> {
             // you don't need this state in production.
-            Text("No update available")
+            Column {
+                if (!isEnabled) {
+                    Text("The updater is not enabled")
+                    return
+                }
+                Text("No update available")
+            }
         }
         is UpdateUiState.Available -> {
             val release = state.release

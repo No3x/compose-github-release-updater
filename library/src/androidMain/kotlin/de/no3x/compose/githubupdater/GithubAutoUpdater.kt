@@ -54,7 +54,8 @@ class GithubAutoUpdater(
     private val userAgent: String = "${context.packageName}-updater",
     private val checkInterval: Duration = 6.hours,
     private val assetFilter: AssetFilter = default(),
-    private val versionComparator: VersionComparator = VersionComparator.default()
+    private val versionComparator: VersionComparator = VersionComparator.default(),
+    private val enabled: Boolean = true
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -63,9 +64,12 @@ class GithubAutoUpdater(
      * Checks the GitHub releases feed for a version newer than [currentVersion].
      */
     suspend fun checkForUpdate(
-        force: Boolean = true,
+        force: Boolean = false,
         currentVersion: String = installedVersion(),
     ): GithubRelease? = withContext(Dispatchers.IO) {
+        if (!enabled) {
+            return@withContext null
+        }
         if (!force && shouldSkipCheck()) {
             return@withContext null
         }
@@ -94,7 +98,10 @@ class GithubAutoUpdater(
         release: GithubRelease,
         onProgress: (Float?) -> Unit,
     ): Result<Unit> = withContext(Dispatchers.IO) {
-       runCatching {
+        if (!enabled) {
+            return@withContext Result.failure(IllegalStateException("GithubAutoUpdater is disabled"))
+        }
+        runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 !context.packageManager.canRequestPackageInstalls()
             ) throw MissingInstallPermissionException()
@@ -115,21 +122,21 @@ class GithubAutoUpdater(
                 }
             }
 
-           withContext(Dispatchers.Main) {
-               val authority = "${context.packageName}.fileprovider"
-               val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
-               val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                   setDataAndType(apkUri, "application/vnd.android.package-archive")
-                   addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-               }
-               val packageManager = context.packageManager
-               if (installIntent.resolveActivity(packageManager) != null) {
-                   context.startActivity(installIntent)
-                   onProgress(1f)
-               } else {
-                   throw ActivityNotFoundException("No installer available")
-               }
-           }
+            withContext(Dispatchers.Main) {
+                val authority = "${context.packageName}.fileprovider"
+                val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
+                val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val packageManager = context.packageManager
+                if (installIntent.resolveActivity(packageManager) != null) {
+                    context.startActivity(installIntent)
+                    onProgress(1f)
+                } else {
+                    throw ActivityNotFoundException("No installer available")
+                }
+            }
         }
     }
 

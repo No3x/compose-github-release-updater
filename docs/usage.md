@@ -53,15 +53,18 @@ Constructor parameters:
 - `owner` and `repo` - GitHub coordinates.
 - `token` - optional bearer token string.
 - `userAgent` - defaults to `<package>.updater` and can be overridden.
+- `enabled` - gate the updater behind a build flag; set it to `false` for debug variants to disable update prompts.
 - `checkInterval` - minimum duration between non forced checks. Default is six hours.
 - `assetFilter` - matches the asset to download. Defaults to APK MIME type or `.apk`.
 - `versionComparator` - decides whether a release is newer. Defaults to SemVer comparison with tolerant tags.
 
 Public API:
-- `suspend fun checkForUpdate(force: Boolean = true, currentVersion: String = installedVersion())`: returns a `GithubRelease?`.
+- `suspend fun checkForUpdate(force: Boolean = false, currentVersion: String = installedVersion())`: returns a `GithubRelease?`.
 - `suspend fun downloadAndInstall(release, onProgress)`: downloads the asset and returns `Result<Unit>`.
 - `fun deferRelease(release)` and `fun clearDeferredRelease()`: skip the given version until the next forced check.
 - `fun createInstallPermissionIntent()`: returns an `Intent` that opens the system settings on Android O+ when the user must allow installing unknown apps.
+
+`checkForUpdate()` honours `checkInterval` by default. Pass `force = true` only when the user explicitly requests an immediate refresh (for example from a settings button).
 
 The helper posts a toast on network failures during `checkForUpdate`. You can surface richer UI by inspecting the returned `Result` from `downloadAndInstall`:
 ```kotlin
@@ -78,6 +81,10 @@ scope.launch {
     }
 }
 ```
+
+
+## Disable in debug builds
+Pass `enabled = !BuildConfig.DEBUG` (or a similar build flag) when constructing the updater to keep debug builds silent. When disabled, `checkForUpdate()` returns `null` and `downloadAndInstall` yields a failed `Result`.
 
 ## Custom asset matching
 Combine the supplied filters to target a specific file name:
@@ -111,7 +118,7 @@ val updater = GithubAutoUpdater(
 Call `deferRelease` when the user taps "Later". The updater writes the version name to shared preferences and skips it on the next non forced `checkForUpdate`. Call `clearDeferredRelease` to purge that override (for example after a successful installation or when the user revisits a settings screen).
 
 ## Scheduling background checks
-`checkForUpdate(force = false)` already respects `checkInterval`. To keep the UI snappy, schedule a background worker that runs daily:
+`checkForUpdate()` already respects `checkInterval`. To keep the UI snappy, schedule a background worker that runs daily:
 ```kotlin
 class GitHubUpdateWorker(
     appContext: Context,
@@ -125,7 +132,7 @@ class GitHubUpdateWorker(
             repo = BuildConfig.GITHUB_REPO_NAME,
             token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() }
         )
-        val release = updater.checkForUpdate(force = false) ?: return Result.success()
+        val release = updater.checkForUpdate() ?: return Result.success()
         // Notify the user via NotificationManager, store the release info, etc.
         return Result.success()
     }
