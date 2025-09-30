@@ -82,7 +82,20 @@ If you publish a different version (for example a Git SHA on JitPack), update th
        var error by remember { mutableStateOf<Throwable?>(null) }
 
        LaunchedEffect(updater) {
-           pendingRelease = updater.checkForUpdate()
+           when (val update = updater.checkForUpdate()) {
+               is UpdateCheckResult.UpdateAvailable -> {
+                   error = null
+                   pendingRelease = update.release
+               }
+               is UpdateCheckResult.NoUpdate -> {
+                   pendingRelease = null
+               }
+               is UpdateCheckResult.Skipped -> Unit
+               is UpdateCheckResult.Failed -> {
+                   pendingRelease = null
+                   error = update.error
+               }
+           }
        }
 
        pendingRelease?.let { release ->
@@ -147,8 +160,8 @@ If you publish a different version (for example a Git SHA on JitPack), update th
    }
    ```
    Use the `enabled` flag to skip update prompts in debug builds (as shown above).
-   `checkForUpdate()` respects the throttling interval by default, so reserve `force = true` for an explicit "Check for updates" action.
-   The helper exposes a small `Result` based API so you can surface errors or ask the user to grant "install unknown apps" permission when needed.
+   `checkForUpdate()` returns an `UpdateCheckResult` and respects the throttling interval by default, so reserve `force = true` for an explicit "Check for updates" action.
+   Handle `UpdateCheckResult.Failed` if you want to surface richer UI; the helper also exposes a small `Result` based API so you can surface errors or ask the user to grant "install unknown apps" permission when needed.
 
 A fuller Compose implementation is available in `sample/src/androidMain/`.
 

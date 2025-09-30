@@ -17,7 +17,6 @@ import de.no3x.compose.githubupdater.AssetFilter.Companion.default
 import io.github.z4kn4fein.semver.Version
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -43,6 +42,23 @@ data class GithubRelease(
     val versionName: String = tagName.trimStart('v', 'V')
 }
 
+sealed interface UpdateCheckResult {
+    data class UpdateAvailable(val release: GithubRelease) : UpdateCheckResult
+
+    sealed interface NoUpdate : UpdateCheckResult {
+        data object UpToDate : NoUpdate
+        data object NoCompatibleRelease : NoUpdate
+        data object Disabled : NoUpdate
+    }
+
+    sealed interface Skipped : UpdateCheckResult {
+        data object Throttled : Skipped
+        data class Deferred(val versionName: String) : Skipped
+    }
+
+    data class Failed(val error: Throwable) : UpdateCheckResult
+}
+
 /**
  * Handles checking and downloading application updates published on GitHub.
  */
@@ -66,27 +82,36 @@ class GithubAutoUpdater(
     suspend fun checkForUpdate(
         force: Boolean = false,
         currentVersion: String = installedVersion(),
-    ): GithubRelease? = withContext(Dispatchers.IO) {
+    ): UpdateCheckResult = withContext(Dispatchers.IO) {
         if (!enabled) {
-            return@withContext null
+            return@withContext UpdateCheckResult.NoUpdate.Disabled
         }
         if (!force && shouldSkipCheck()) {
-            return@withContext null
+            return@withContext UpdateCheckResult.Skipped.Throttled
         }
 
         val now = System.currentTimeMillis()
-        val release = runCatching { fetchLatestRelease() }
-            .onFailure { e ->
-                Handler(context.mainLooper).post {
-                    Toast.makeText(context, "Update check failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        val ignoredVersion = prefs.getString(KEY_IGNORED_VERSION, null)
+        val state = runCatching { fetchLatestRelease() }
+            .fold(
+                onSuccess = { release ->
+                    when {
+                        release == null -> UpdateCheckResult.NoUpdate.NoCompatibleRelease
+                        !versionComparator.isNewerVersion(currentVersion, release.versionName) -> UpdateCheckResult.NoUpdate.UpToDate
+                        !force && release.versionName == ignoredVersion -> UpdateCheckResult.Skipped.Deferred(release.versionName)
+                        else -> UpdateCheckResult.UpdateAvailable(release)
+                    }
+                },
+                onFailure = { error ->
+                    Handler(context.mainLooper).post {
+                        Toast.makeText(context, "Update check failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                    UpdateCheckResult.Failed(error)
                 }
-            }
-            .getOrNull()
-            ?.takeIf { versionComparator.isNewerVersion(currentVersion, it.versionName) }
-            ?.takeIf { force || it.versionName != prefs.getString(KEY_IGNORED_VERSION, null) }
+            )
 
         prefs.edit { putLong(KEY_LAST_CHECK, now) }
-        release
+        state
     }
 
     /**

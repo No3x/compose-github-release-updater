@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import de.no3x.compose.githubupdater.GithubAutoUpdater
 import de.no3x.compose.githubupdater.GithubRelease
+import de.no3x.compose.githubupdater.UpdateCheckResult
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -52,11 +53,22 @@ fun App() {
     var updateState by remember { mutableStateOf<UpdateUiState>(UpdateUiState.None) }
 
     LaunchedEffect(updater) {
-        val release = updater.checkForUpdate()
-        updateState = if (release != null) {
-            UpdateUiState.Available(release)
-        } else {
-            UpdateUiState.NotAvailable
+        when (val result = updater.checkForUpdate()) {
+            is UpdateCheckResult.UpdateAvailable -> {
+                updateState = UpdateUiState.Available(result.release)
+            }
+            is UpdateCheckResult.NoUpdate -> {
+                updateState = UpdateUiState.NotAvailable(result)
+            }
+            is UpdateCheckResult.Skipped -> {
+                // Handle Deferred vs Throttled here if you need different UI
+                updateState = UpdateUiState.NotAvailable(result)
+            }
+            is UpdateCheckResult.Failed -> {
+                val message = result.error.localizedMessage
+                    ?: context.getString(R.string.update_error_generic)
+                updateState = UpdateUiState.Error(null, message)
+            }
         }
     }
 
@@ -103,11 +115,7 @@ fun App() {
         is UpdateUiState.NotAvailable -> {
             // you don't need this state in production.
             Column {
-                if (!isEnabled) {
-                    Text("The updater is not enabled")
-                    return
-                }
-                Text("No update available")
+                Text("No update: ${state.result}")
             }
         }
         is UpdateUiState.Available -> {
@@ -278,7 +286,7 @@ fun App() {
 
 private sealed interface UpdateUiState {
     data object None : UpdateUiState
-    data object NotAvailable : UpdateUiState
+    data class NotAvailable(val result: UpdateCheckResult) : UpdateUiState
     data class Available(val release: GithubRelease) : UpdateUiState
     data class Downloading(val release: GithubRelease, val progress: Float?) : UpdateUiState
     data class PermissionRequired(val release: GithubRelease, val intent: Intent) : UpdateUiState

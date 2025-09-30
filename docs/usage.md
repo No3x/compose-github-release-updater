@@ -59,14 +59,20 @@ Constructor parameters:
 - `versionComparator` - decides whether a release is newer. Defaults to SemVer comparison with tolerant tags.
 
 Public API:
-- `suspend fun checkForUpdate(force: Boolean = false, currentVersion: String = installedVersion())`: returns a `GithubRelease?`.
+- `suspend fun checkForUpdate(force: Boolean = false, currentVersion: String = installedVersion())`: returns an `UpdateCheckResult` describing whether an update can be surfaced, was skipped, or failed.
 - `suspend fun downloadAndInstall(release, onProgress)`: downloads the asset and returns `Result<Unit>`.
 - `fun deferRelease(release)` and `fun clearDeferredRelease()`: skip the given version until the next forced check.
 - `fun createInstallPermissionIntent()`: returns an `Intent` that opens the system settings on Android O+ when the user must allow installing unknown apps.
 
+`UpdateCheckResult` conveys the outcome:
+- `UpdateCheckResult.UpdateAvailable` exposes the `GithubRelease` when a newer version is ready.
+- `UpdateCheckResult.NoUpdate` groups `NoUpdate.UpToDate`, `NoUpdate.NoCompatibleRelease`, and `NoUpdate.Disabled` when nothing should be surfaced.
+- `UpdateCheckResult.Skipped` covers early exits such as `Skipped.Throttled` and `Skipped.Deferred`.
+- `UpdateCheckResult.Failed` wraps the thrown exception so you can surface richer feedback.
+
 `checkForUpdate()` honours `checkInterval` by default. Pass `force = true` only when the user explicitly requests an immediate refresh (for example from a settings button).
 
-The helper posts a toast on network failures during `checkForUpdate`. You can surface richer UI by inspecting the returned `Result` from `downloadAndInstall`:
+The helper posts a toast on network failures during `checkForUpdate`. You can surface richer UI by handling `UpdateCheckResult.Failed` and by inspecting the returned `Result` from `downloadAndInstall`:
 ```kotlin
 scope.launch {
     updater.downloadAndInstall(release) { progress ->
@@ -84,7 +90,7 @@ scope.launch {
 
 
 ## Disable in debug builds
-Pass `enabled = !BuildConfig.DEBUG` (or a similar build flag) when constructing the updater to keep debug builds silent. When disabled, `checkForUpdate()` returns `null` and `downloadAndInstall` yields a failed `Result`.
+Pass `enabled = !BuildConfig.DEBUG` (or a similar build flag) when constructing the updater to keep debug builds silent. When disabled, `checkForUpdate()` returns `UpdateCheckResult.NoUpdate.Disabled` and `downloadAndInstall` yields a failed `Result`.
 
 ## Custom asset matching
 Combine the supplied filters to target a specific file name:
@@ -132,7 +138,10 @@ class GitHubUpdateWorker(
             repo = BuildConfig.GITHUB_REPO_NAME,
             token = BuildConfig.GITHUB_RELEASES_TOKEN.takeIf { it.isNotBlank() }
         )
-        val release = updater.checkForUpdate() ?: return Result.success()
+        val release = when (val update = updater.checkForUpdate()) {
+            is UpdateCheckResult.UpdateAvailable -> update.release
+            else -> return Result.success()
+        }
         // Notify the user via NotificationManager, store the release info, etc.
         return Result.success()
     }
