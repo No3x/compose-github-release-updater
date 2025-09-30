@@ -34,7 +34,12 @@ import kotlin.math.roundToInt
 fun App() {
     val context = LocalContext.current
     val updateScope = rememberCoroutineScope()
-    var isEnabled by remember { mutableStateOf(!BuildConfig.DEBUG) }
+    var isEnabled by remember {
+        mutableStateOf(
+            // check for debug build. since this is a sample app, we enable the updater in debug builds as well
+            !BuildConfig.DEBUG or BuildConfig.DEBUG
+        )
+    }
     val updater = remember(context.applicationContext) {
         GithubAutoUpdater(
             context = context.applicationContext,
