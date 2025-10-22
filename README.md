@@ -15,7 +15,7 @@ Android helper for surfacing and installing GitHub releases straight from your J
 - GitHub repository that publishes installable APKs
 
 ## Installation
-The project is wired for JitPack and Maven publishing. After the first tagged release you can depend on it with:
+The project is wired for JitPack and Maven publishing. You can depend on it via JitPack with:
 
 ```kotlin
 // settings.gradle.kts
